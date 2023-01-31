@@ -19,6 +19,6 @@ A python script that fetches memes from Reddit using free proxies.
 ### How to run
 - Clone the repository to your local machine
 - Install the required packages using `pip install -r requirements.txt`
-- Run the script using `python RedditMemes.py`
+- Run the script using `python Scrape.py`
 - Enter the list of subreddits separated by single space when prompted
 - The memes will be saved in the `./images/` directory. Each subreddit will have its own directory inside `./images/`.
