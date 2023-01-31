@@ -1,47 +1,87 @@
 import requests
-import random
-import urllib.request
+import os
 import uuid
 import re
-import os
+from concurrent.futures import ThreadPoolExecutor
+from bs4 import BeautifulSoup
 
-header={'User-agent':'my bot 0.1'}
-subreddits = ["funny","memes"]
+# Function to fetch free proxies from https://free-proxy-list.net/
+def get_free_proxies():
+    response = requests.get("https://free-proxy-list.net/")
+    soup = BeautifulSoup(response.content, "html.parser")
+    proxies = []
+    for row in soup.select("table.table tbody tr"):
+        cells = row.select("td")
+        if len(cells) > 0:
+            host = cells[0].text
+            port = cells[1].text
+            proxy = f"http://{host}:{port}"
+            proxies.append({"http": proxy})
+    return proxies
 
-# Select random subreddit from the list
-CurrentSub = random.choice(subreddits)
+# Class to scrape memes from Reddit using free proxies
+class RedditMemes:
+    def __init__(self):
+        self.proxies_list = get_free_proxies()
 
-#Fetch Reddit API
-r = requests.get(f'https://api.reddit.com/r/{CurrentSub}',headers=header)
+    # Function to get list of subreddits from user input
+    def get_subreddits(self):
+        return input("Enter subreddits, separated by single space: ").split()
 
-data=r.json()
-newData=data['data']['children']
+    # Function to make directory if not exists
+    def make_directory(self, directory_path):
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
 
-def main(newData):
-	# Check if folder exists
-	dirCheck = os.path.exists("images")
-	# Create folder if doesn't exist
-	if not dirCheck:
-		os.mkdir("images")
-	# Loop for every meme
-	for x in newData:
-		data = x['data']
-		filename = str(uuid.uuid4())
-		# Filter out invalid link and NSFW content
-		if data['over_18'] or "url_overridden_by_dest" not in data:
-			continue
-		try:
-			# Get URL for the meme
-			memeURL = data['url_overridden_by_dest']
-			regex = r"\.\w+$"
-			# Get the image extension
-			imgExt = re.search(regex,memeURL)
-			imgExt = imgExt.group(0)
-			#Save meme to a folder 
-			urllib.request.urlretrieve(memeURL, f"./images/{filename}{imgExt}")
-		except:
-			continue
+    # Function to scrape memes from a subreddit
+    def scrape_subreddit(self, subreddit):
+        url = f'https://api.reddit.com/r/{subreddit}'
+        resp = self._get_response(url)
+        if not resp:
+            return
+        data = resp.json()
+        directory_path = f'./images/{subreddit}'
+        self.make_directory(directory_path)
+        for post in data['data']['children']:
+            try:
+                post_data = post['data']
+                if post_data['over_18'] or "url_overridden_by_dest" not in post_data:
+                    continue
+                self.get_meme_image(directory_path, post_data['url_overridden_by_dest'])
+            except Exception as e:
+                pass
 
-main(newData)
+    # Function to fetch meme image and save it
+    def get_meme_image(self, directory_path, meme_url):
+        resp = self._get_response(meme_url)
+        if not resp:
+            return
+        try:
+            filename = str(uuid.uuid4())
+            regex = r"\.\w+$"
+            ext = re.search(regex, meme_url).group(0)
+            with open(f"{directory_path}/{filename}{ext}", 'wb+') as f:
+                f.write(resp.content)
+        except Exception as e:
+            pass
 
+    # Function to get response from URL using free proxies
+    def _get_response(self, url):
+        for proxy in self.proxies_list:
+            try:
+                resp = requests.get(url, proxies=proxy)
+                if resp.status_code == 200:
+                    return resp
+            except:
+                continue
+        print(f'Error accessing URL: {url} with all proxies')
+        return None
 
+    def main(self):
+        subreddits = self.get_subreddits()
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            executor.map(self.scrape_subreddit, subreddits)
+        print('finished.....')
+
+if __name__ == "__main__":
+    RedditMemes().main()
