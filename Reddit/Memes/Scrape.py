@@ -61,7 +61,7 @@ class RedditMemes:
     def _get_response(self, url):
         for proxy in self.proxies_list:
             try:
-                resp = requests.get(url, proxies= {'http': f'http://proxy'})
+                resp = requests.get(url, proxies= {'http': f'http://{proxy}'})
                 if resp.status_code == 200:
                     return resp
             except:

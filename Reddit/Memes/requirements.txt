@@ -3,4 +3,3 @@ os
 uuid
 re
 concurrent.futures
-bs4
