@@ -7,7 +7,6 @@ A python script that fetches memes from Reddit using free proxies.
 - `uuid`
 - `re`
 - `concurrent.futures`
-- `bs4`
 
 ### Features
 - Fetches free proxies from [Free Proxy List](https://free-proxy-list.net/)
