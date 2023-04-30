@@ -3,20 +3,12 @@ import os
 import uuid
 import re
 from concurrent.futures import ThreadPoolExecutor
-from bs4 import BeautifulSoup
 
 # Function to fetch free proxies from https://free-proxy-list.net/
 def get_free_proxies():
     response = requests.get("https://free-proxy-list.net/")
-    soup = BeautifulSoup(response.content, "html.parser")
-    proxies = []
-    for row in soup.select("table.table tbody tr"):
-        cells = row.select("td")
-        if len(cells) > 0:
-            host = cells[0].text
-            port = cells[1].text
-            proxy = f"http://{host}:{port}"
-            proxies.append({"http": proxy})
+    valid_ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}:\d+\b'
+    proxies = [{"http":f"http://{proxy}"} for proxy in re.findall(valid_ip_pattern, response.text)]
     return proxies
 
 # Class to scrape memes from Reddit using free proxies
@@ -45,7 +37,7 @@ class RedditMemes:
         for post in data['data']['children']:
             try:
                 post_data = post['data']
-                if post_data['over_18'] or "url_overridden_by_dest" not in post_data:
+                if post_data.get('over_18', False) or 'url_overridden_by_dest' not in post_data:
                     continue
                 self.get_meme_image(directory_path, post_data['url_overridden_by_dest'])
             except Exception as e:
