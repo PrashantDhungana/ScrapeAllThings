@@ -7,8 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 # Function to fetch free proxies from https://free-proxy-list.net/
 def get_free_proxies():
     response = requests.get("https://free-proxy-list.net/")
-    valid_ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}:\d+\b'
-    proxies = [{"http":f"http://{proxy}"} for proxy in re.findall(valid_ip_pattern, response.text)]
+    proxies = re.findall(r'\d+\.\d+\.\d+\.\d+:\d{2,5}', response.text)
     return proxies
 
 # Class to scrape memes from Reddit using free proxies
@@ -37,7 +36,8 @@ class RedditMemes:
         for post in data['data']['children']:
             try:
                 post_data = post['data']
-                if post_data.get('over_18', False) or 'url_overridden_by_dest' not in post_data:
+                if post_data['over_18'] or "url_overridden_by_dest" not in post_data:
+                    print("NSFW content detected! Skipping...")
                     continue
                 self.get_meme_image(directory_path, post_data['url_overridden_by_dest'])
             except Exception as e:
@@ -61,7 +61,7 @@ class RedditMemes:
     def _get_response(self, url):
         for proxy in self.proxies_list:
             try:
-                resp = requests.get(url, proxies=proxy)
+                resp = requests.get(url, proxies= {'http': f'http://proxy'})
                 if resp.status_code == 200:
                     return resp
             except:
